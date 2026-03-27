@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { getGlucoseStatus } from '@/lib/glucose';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart
+  Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart
 } from 'recharts';
 
 type Period = '24h' | '7j' | '30j';
@@ -59,25 +60,44 @@ const ChartsPage = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="px-5 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-primary mb-4">Graphiques</h1>
+        <motion.h1
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-2xl font-bold text-primary mb-4"
+        >
+          Graphiques
+        </motion.h1>
 
         {/* Period Selector */}
         <div className="flex gap-2 mb-4">
           {(['24h', '7j', '30j'] as Period[]).map(p => (
-            <button
+            <motion.button
               key={p}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setPeriod(p)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                period === p ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'
+              className={`relative flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                period === p ? 'text-secondary-foreground' : 'bg-muted text-muted-foreground'
               }`}
             >
-              {p}
-            </button>
+              {period === p && (
+                <motion.div
+                  layoutId="period-indicator"
+                  className="absolute inset-0 bg-secondary rounded-xl"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{p}</span>
+            </motion.button>
           ))}
         </div>
 
         {/* Chart */}
-        <div className="p-4 rounded-xl bg-card card-shadow mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="p-4 rounded-2xl bg-card card-shadow mb-4"
+        >
           <div className="h-56">
             {filtered.length === 0 ? (
               <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -105,34 +125,40 @@ const ChartsPage = () => {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats */}
         {filtered.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-card card-shadow">
-              <p className="text-xs text-muted-foreground">Moyenne</p>
-              <p className="text-xl font-bold text-foreground">{avg} mg/dL</p>
-            </div>
-            <div className="p-3 rounded-xl bg-card card-shadow">
-              <p className="text-xs text-muted-foreground">Tendance</p>
-              <p className="text-xl font-bold text-foreground">{trend.icon} {trend.label}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-card card-shadow">
-              <p className="text-xs text-muted-foreground">Min / Max</p>
-              <p className="text-xl font-bold text-foreground">{min} / {max}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-card card-shadow">
-              <p className="text-xs text-muted-foreground">% en zone normale</p>
-              <p className="text-xl font-bold text-success">{normalPct}%</p>
-            </div>
+            {[
+              { label: 'Moyenne', value: `${avg} mg/dL`, color: '' },
+              { label: 'Tendance', value: `${trend.icon} ${trend.label}`, color: '' },
+              { label: 'Min / Max', value: `${min} / ${max}`, color: '' },
+              { label: '% zone normale', value: `${normalPct}%`, color: 'text-success' },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.06 }}
+                className="p-3 rounded-2xl bg-card card-shadow"
+              >
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className={`text-xl font-bold ${stat.color || 'text-foreground'}`}>{stat.value}</p>
+              </motion.div>
+            ))}
             {avg && avg > 180 && (
-              <div className="col-span-2 p-3 rounded-xl bg-warning/10 border border-warning/30">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 }}
+                className="col-span-2 p-3 rounded-2xl bg-warning/10 border border-warning/30"
+              >
                 <p className="text-sm text-warning font-medium">
                   ⚠ Moyenne élevée — HbA1c estimée : ~{(avg / 28.7 + 46.7 / 28.7).toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Consultez votre médecin.</p>
-              </div>
+              </motion.div>
             )}
           </div>
         )}

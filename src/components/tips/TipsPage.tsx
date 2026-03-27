@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { Syringe, AlertTriangle, TrendingUp, Moon, Dumbbell } from 'lucide-react';
 
@@ -6,13 +7,7 @@ interface TipSection {
   id: string;
   icon: typeof Syringe;
   label: string;
-  content: TipContent;
-}
-
-interface TipContent {
-  title: string;
-  sections: { heading: string; emoji: string; items: string[] }[];
-  tip: string;
+  content: { title: string; sections: { heading: string; emoji: string; items: string[] }[]; tip: string };
 }
 
 const tipsData: TipSection[] = [
@@ -58,7 +53,7 @@ const tipsData: TipSection[] = [
       title: 'Diabète et Ramadan',
       sections: [
         { heading: 'Avant le Ramadan', emoji: '📋', items: ['Consultez votre médecin 1-2 mois avant', 'Ajustez vos doses d\'insuline', 'Apprenez à reconnaître les signes de danger', 'Préparez un plan alimentaire adapté'] },
-        { heading: 'Pendant le jeûne', emoji: '🌙', items: ['Mesurez votre glycémie plusieurs fois/jour', 'Suhoor (repas avant l\'aube) : glucides lents + protéines', 'Iftar : commencez par des dattes + eau', 'Évitez les aliments très sucrés à l\'Iftar', 'Hydratez-vous abondamment la nuit'] },
+        { heading: 'Pendant le jeûne', emoji: '🌙', items: ['Mesurez votre glycémie plusieurs fois/jour', 'Suhoor : glucides lents + protéines', 'Iftar : commencez par des dattes + eau', 'Évitez les aliments très sucrés à l\'Iftar', 'Hydratez-vous abondamment la nuit'] },
         { heading: 'Quand rompre le jeûne ?', emoji: '⚠️', items: ['Glycémie < 70 mg/dL → rompre immédiatement', 'Glycémie > 300 mg/dL → rompre le jeûne', 'Symptômes d\'hypoglycémie → rompre', 'Malaise, nausées → rompre', 'Votre santé passe avant tout'] },
       ],
       tip: 'Le jeûne n\'est pas obligatoire pour les personnes malades en Islam. Consultez votre médecin ET un imam.',
@@ -91,63 +86,98 @@ const TipsPage = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="px-5 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-primary mb-4">Conseils Pratiques</h1>
+        <motion.h1
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-2xl font-bold text-primary mb-4"
+        >
+          Conseils Pratiques
+        </motion.h1>
 
         {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-hide">
           {tipsData.map(tab => (
-            <button
+            <motion.button
               key={tab.id}
+              whileTap={{ scale: 0.9 }}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab.id ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'
+              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id ? 'text-secondary-foreground' : 'bg-muted text-muted-foreground'
               }`}
             >
-              <tab.icon size={14} />
-              {tab.label}
-            </button>
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="tips-tab"
+                  className="absolute inset-0 bg-secondary rounded-xl"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <tab.icon size={14} />
+                {tab.label}
+              </span>
+            </motion.button>
           ))}
         </div>
 
         {/* Content */}
-        <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-foreground">{activeTip.content.title}</h2>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col gap-4"
+          >
+            <h2 className="text-lg font-bold text-foreground">{activeTip.content.title}</h2>
 
-          {activeTip.content.sections.map((section, i) => (
-            <div key={i} className="p-4 rounded-xl bg-card card-shadow">
-              <h3 className="font-semibold text-foreground mb-2">
-                {section.emoji} {section.heading}
-              </h3>
-              <ul className="space-y-1.5">
-                {section.items.map((item, j) => (
-                  <li key={j} className="text-sm text-muted-foreground flex gap-2">
-                    {item.startsWith('→') ? (
-                      <span className="text-secondary ml-4">{item}</span>
-                    ) : item.startsWith('✕') ? (
-                      <span className="text-destructive">{item}</span>
-                    ) : (
-                      <>
-                        <span className="text-secondary flex-shrink-0">•</span>
-                        <span>{item}</span>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            {activeTip.content.sections.map((section, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + i * 0.08 }}
+                className="p-4 rounded-2xl bg-card card-shadow"
+              >
+                <h3 className="font-semibold text-foreground mb-2">
+                  {section.emoji} {section.heading}
+                </h3>
+                <ul className="space-y-1.5">
+                  {section.items.map((item, j) => (
+                    <li key={j} className="text-sm text-muted-foreground flex gap-2">
+                      {item.startsWith('→') ? (
+                        <span className="text-secondary ml-4">{item}</span>
+                      ) : item.startsWith('✕') ? (
+                        <span className="text-destructive">{item}</span>
+                      ) : (
+                        <>
+                          <span className="text-secondary flex-shrink-0">•</span>
+                          <span>{item}</span>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
 
-          {/* Tip of the day */}
-          <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/20">
-            <p className="text-sm font-semibold text-secondary mb-1">💡 Conseil du jour</p>
-            <p className="text-sm text-foreground">{activeTip.content.tip}</p>
-          </div>
+            {/* Tip of the day */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="p-4 rounded-2xl bg-secondary/10 border border-secondary/20"
+            >
+              <p className="text-sm font-semibold text-secondary mb-1">💡 Conseil du jour</p>
+              <p className="text-sm text-foreground">{activeTip.content.tip}</p>
+            </motion.div>
 
-          {/* Disclaimer */}
-          <p className="text-xs text-muted-foreground text-center px-4">
-            ⚕️ Ces conseils sont informatifs et ne remplacent pas l'avis de votre médecin.
-          </p>
-        </div>
+            <p className="text-xs text-muted-foreground text-center px-4">
+              ⚕️ Ces conseils sont informatifs et ne remplacent pas l'avis de votre médecin.
+            </p>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

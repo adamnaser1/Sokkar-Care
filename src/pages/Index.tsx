@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { AnimatePresence, motion } from 'framer-motion';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
 import ProfileForm from '@/components/onboarding/ProfileForm';
 import Dashboard from '@/components/dashboard/Dashboard';
@@ -13,6 +14,12 @@ import SettingsPage from '@/components/settings/SettingsPage';
 import BottomNav, { PageId } from '@/components/layout/BottomNav';
 
 type AppView = PageId | 'tips' | 'calculator' | 'settings';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 20, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -12, scale: 0.98 },
+};
 
 const Index = () => {
   const onboardingComplete = useAppStore(s => s.onboardingComplete);
@@ -32,32 +39,50 @@ const Index = () => {
     ? (currentView as PageId)
     : currentView === 'settings' ? 'profile' : 'dashboard';
 
+  const renderPage = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard onNavigate={(view: AppView) => setCurrentView(view)} />;
+      case 'journal':
+        return <GlucoseJournal />;
+      case 'charts':
+        return <ChartsPage />;
+      case 'food':
+        return <FoodDatabase />;
+      case 'tips':
+        return <TipsPage />;
+      case 'calculator':
+        return <InsulinCalculator />;
+      case 'profile':
+        return (
+          <ProfilePage
+            onOpenSettings={() => setCurrentView('settings')}
+            onOpenTips={() => setCurrentView('tips')}
+            onOpenCalculator={() => setCurrentView('calculator')}
+          />
+        );
+      case 'settings':
+        return <SettingsPage onBack={() => setCurrentView('profile')} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
-      {currentView === 'dashboard' && (
-        <Dashboard
-          onNavigate={(view: AppView) => setCurrentView(view)}
-        />
-      )}
-      {currentView === 'journal' && <GlucoseJournal />}
-      {currentView === 'charts' && <ChartsPage />}
-      {currentView === 'food' && <FoodDatabase />}
-      {currentView === 'tips' && <TipsPage />}
-      {currentView === 'calculator' && <InsulinCalculator />}
-      {currentView === 'profile' && (
-        <ProfilePage
-          onOpenSettings={() => setCurrentView('settings')}
-          onOpenTips={() => setCurrentView('tips')}
-          onOpenCalculator={() => setCurrentView('calculator')}
-        />
-      )}
-      {currentView === 'settings' && (
-        <SettingsPage onBack={() => setCurrentView('profile')} />
-      )}
-      <BottomNav
-        current={navPage}
-        onChange={(id) => setCurrentView(id)}
-      />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentView}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          {renderPage()}
+        </motion.div>
+      </AnimatePresence>
+      <BottomNav current={navPage} onChange={(id) => setCurrentView(id)} />
     </>
   );
 };

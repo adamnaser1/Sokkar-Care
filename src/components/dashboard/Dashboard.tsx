@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { getGlucoseStatus, formatRelativeTime } from '@/lib/glucose';
 import SokkarLogo from '@/components/SokkarLogo';
@@ -15,6 +16,14 @@ import {
 interface Props {
   onNavigate: (view: string) => void;
 }
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.08, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
+  }),
+};
 
 const Dashboard = ({ onNavigate }: Props) => {
   const profile = useAppStore(s => s.profile);
@@ -56,35 +65,57 @@ const Dashboard = ({ onNavigate }: Props) => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="px-5 pt-6 pb-4 flex items-center justify-between"
+      >
         <div>
           <SokkarLogo size={28} />
           <p className="text-muted-foreground text-sm mt-1">
             Bonjour, <span className="font-semibold text-foreground">{profile?.firstName || 'Utilisateur'}</span>
           </p>
         </div>
-        <button onClick={() => onNavigate('profile')} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onNavigate('profile')}
+          className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center"
+        >
           <User className="text-primary" size={20} />
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       <div className="px-5 flex flex-col gap-4">
         {/* Last Measurement Card */}
-        <div className={`p-5 rounded-xl card-shadow-elevated border ${
-          !lastMeasure ? 'bg-card border-border' :
-          lastStatus?.color === 'normal' ? 'bg-success/5 border-success/20' :
-          lastStatus?.color === 'hypo' ? 'bg-destructive/5 border-destructive/20' :
-          'bg-warning/5 border-warning/20'
-        }`}>
+        <motion.div
+          custom={0}
+          variants={staggerItem}
+          initial="hidden"
+          animate="visible"
+          className={`p-5 rounded-2xl card-shadow-elevated border ${
+            !lastMeasure ? 'bg-card border-border' :
+            lastStatus?.color === 'normal' ? 'bg-success/5 border-success/20' :
+            lastStatus?.color === 'hypo' ? 'bg-destructive/5 border-destructive/20' :
+            'bg-warning/5 border-warning/20'
+          }`}
+        >
           {lastMeasure ? (
             <>
               <p className="text-sm text-muted-foreground mb-1">Dernière Mesure</p>
               <div className="flex items-end justify-between">
                 <div>
-                  <span className={`text-5xl font-bold ${
-                    lastStatus?.color === 'normal' ? 'text-success' :
-                    lastStatus?.color === 'hypo' ? 'text-destructive' : 'text-warning'
-                  }`}>{lastMeasure.value}</span>
+                  <motion.span
+                    key={lastMeasure.value}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className={`text-5xl font-bold inline-block ${
+                      lastStatus?.color === 'normal' ? 'text-success' :
+                      lastStatus?.color === 'hypo' ? 'text-destructive' : 'text-warning'
+                    }`}
+                  >
+                    {lastMeasure.value}
+                  </motion.span>
                   <span className="text-lg text-muted-foreground ml-1">mg/dL</span>
                 </div>
                 <div className="text-right text-sm">
@@ -106,10 +137,18 @@ const Dashboard = ({ onNavigate }: Props) => {
           <Button className="w-full mt-4" size="lg" onClick={() => setMeasureOpen(true)}>
             <Plus size={18} className="mr-2" /> Mesurer Maintenant
           </Button>
-        </div>
+        </motion.div>
 
         {/* 7-day Chart */}
-        <div className="p-4 rounded-xl bg-card card-shadow" onClick={() => onNavigate('charts')}>
+        <motion.div
+          custom={1}
+          variants={staggerItem}
+          initial="hidden"
+          animate="visible"
+          whileTap={{ scale: 0.98 }}
+          className="p-4 rounded-2xl bg-card card-shadow cursor-pointer"
+          onClick={() => onNavigate('charts')}
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-foreground">7 Derniers Jours</h3>
             {avg && <span className="text-sm text-muted-foreground">Moy: {avg} mg/dL</span>}
@@ -130,14 +169,25 @@ const Dashboard = ({ onNavigate }: Props) => {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Daily Progress */}
-        <div className="p-4 rounded-xl bg-card card-shadow">
+        <motion.div
+          custom={2}
+          variants={staggerItem}
+          initial="hidden"
+          animate="visible"
+          className="p-4 rounded-2xl bg-card card-shadow"
+        >
           <h3 className="font-semibold text-foreground mb-2">Progression du Jour</h3>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-secondary transition-all" style={{ width: `${todayProgress}%` }} />
+              <motion.div
+                className="h-full rounded-full bg-secondary"
+                initial={{ width: 0 }}
+                animate={{ width: `${todayProgress}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+              />
             </div>
             <span className="text-sm font-medium text-secondary">{Math.round(todayProgress)}%</span>
           </div>
@@ -145,21 +195,29 @@ const Dashboard = ({ onNavigate }: Props) => {
             <span>{todayMeasures.length} mesure{todayMeasures.length > 1 ? 's' : ''} aujourd'hui</span>
             <span>+{points} points ⭐</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-5 gap-2">
+        <motion.div
+          custom={3}
+          variants={staggerItem}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-5 gap-2"
+        >
           {quickLinks.map((link, i) => (
-            <button
+            <motion.button
               key={i}
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ y: -2 }}
               onClick={link.action}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card card-shadow hover:bg-muted transition-colors"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-card card-shadow hover:bg-muted transition-colors"
             >
               <link.icon className={link.color} size={22} />
               <span className="text-xs text-foreground font-medium">{link.label}</span>
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       <MeasurementDialog open={measureOpen} onOpenChange={setMeasureOpen} />
