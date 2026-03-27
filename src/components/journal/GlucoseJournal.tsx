@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { getGlucoseStatus, formatRelativeTime } from '@/lib/glucose';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,11 +45,7 @@ const GlucoseJournal = () => {
 
   const saveEdit = () => {
     if (editingId) {
-      updateMeasurement(editingId, {
-        value: parseFloat(editValue),
-        context: editContext,
-        notes: editNotes,
-      });
+      updateMeasurement(editingId, { value: parseFloat(editValue), context: editContext, notes: editNotes });
       setEditingId(null);
     }
   };
@@ -56,23 +53,40 @@ const GlucoseJournal = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="px-5 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-primary mb-4">Journal de Glycémie</h1>
+        <motion.h1
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-2xl font-bold text-primary mb-4"
+        >
+          Journal de Glycémie
+        </motion.h1>
 
         {/* Stats */}
         {filtered.length > 0 && (
-          <div className="grid grid-cols-4 gap-2 mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-4 gap-2 mb-4"
+          >
             {[
               { label: 'Moyenne', value: `${avg}` },
               { label: 'Min', value: `${min}` },
               { label: 'Max', value: `${max}` },
               { label: 'Mesures', value: `${filtered.length}` },
             ].map((s, i) => (
-              <div key={i} className="p-2 rounded-lg bg-card card-shadow text-center">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 + i * 0.05 }}
+                className="p-2 rounded-xl bg-card card-shadow text-center"
+              >
                 <p className="text-xs text-muted-foreground">{s.label}</p>
                 <p className="text-lg font-bold text-foreground">{s.value}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Filters */}
@@ -105,58 +119,69 @@ const GlucoseJournal = () => {
         {/* Measurement List */}
         <div className="flex flex-col gap-2">
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12 text-muted-foreground"
+            >
               Aucune mesure pour cette période
-            </div>
+            </motion.div>
           ) : (
-            filtered.map(m => {
-              const status = getGlucoseStatus(m.value);
-              const date = new Date(m.measuredAt);
-              const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-              return (
-                <div
-                  key={m.id}
-                  className={`p-4 rounded-xl border card-shadow ${
-                    status.color === 'normal' ? 'bg-success/5 border-success/20' :
-                    status.color === 'hypo' ? 'bg-destructive/5 border-destructive/20' :
-                    'bg-warning/5 border-warning/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{timeStr} · {formatRelativeTime(m.measuredAt)}</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className={`text-2xl font-bold ${
+            <AnimatePresence>
+              {filtered.map((m, idx) => {
+                const status = getGlucoseStatus(m.value);
+                const date = new Date(m.measuredAt);
+                const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20, height: 0 }}
+                    transition={{ delay: idx * 0.04, duration: 0.3 }}
+                    layout
+                    className={`p-4 rounded-2xl border card-shadow ${
+                      status.color === 'normal' ? 'bg-success/5 border-success/20' :
+                      status.color === 'hypo' ? 'bg-destructive/5 border-destructive/20' :
+                      'bg-warning/5 border-warning/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{timeStr} · {formatRelativeTime(m.measuredAt)}</p>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className={`text-2xl font-bold ${
+                            status.color === 'normal' ? 'text-success' :
+                            status.color === 'hypo' ? 'text-destructive' : 'text-warning'
+                          }`}>
+                            {m.value}
+                          </span>
+                          <span className="text-sm text-muted-foreground">mg/dL</span>
+                          {m.context && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{m.context}</span>
+                          )}
+                        </div>
+                        <p className={`text-sm mt-0.5 ${
                           status.color === 'normal' ? 'text-success' :
                           status.color === 'hypo' ? 'text-destructive' : 'text-warning'
                         }`}>
-                          {m.value}
-                        </span>
-                        <span className="text-sm text-muted-foreground">mg/dL</span>
-                        {m.context && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{m.context}</span>
-                        )}
+                          {status.icon} {status.label}
+                        </p>
                       </div>
-                      <p className={`text-sm mt-0.5 ${
-                        status.color === 'normal' ? 'text-success' :
-                        status.color === 'hypo' ? 'text-destructive' : 'text-warning'
-                      }`}>
-                        {status.icon} {status.label}
-                      </p>
+                      <div className="flex gap-1">
+                        <motion.button whileTap={{ scale: 0.85 }} onClick={() => startEdit(m)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
+                          <Pencil size={16} />
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.85 }} onClick={() => deleteMeasurement(m.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive">
+                          <Trash2 size={16} />
+                        </motion.button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => startEdit(m)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
-                        <Pencil size={16} />
-                      </button>
-                      <button onClick={() => deleteMeasurement(m.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-destructive">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  {m.notes && <p className="text-xs text-muted-foreground mt-2 italic">📝 {m.notes}</p>}
-                </div>
-              );
-            })
+                    {m.notes && <p className="text-xs text-muted-foreground mt-2 italic">📝 {m.notes}</p>}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           )}
         </div>
       </div>
