@@ -1,16 +1,24 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
+import ProfileForm from '@/components/onboarding/ProfileForm';
+import Dashboard from '@/components/dashboard/Dashboard';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
-  return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+const Index = () => {
+  const onboardingComplete = useAppStore(s => s.onboardingComplete);
+  const [step, setStep] = useState<'welcome' | 'profile' | 'done'>(
+    onboardingComplete ? 'done' : 'welcome'
   );
-};
 
-const Index = PlaceholderIndex;
+  if (step === 'welcome') {
+    return <OnboardingWelcome onNext={() => setStep('profile')} />;
+  }
+
+  if (step === 'profile') {
+    return <ProfileForm onComplete={() => setStep('done')} />;
+  }
+
+  return <Dashboard />;
+};
 
 export default Index;
