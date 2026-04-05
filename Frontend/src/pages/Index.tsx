@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { AnimatePresence, motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
+import { checkUserProfile } from '@/lib/profileSync';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
 import ProfileForm from '@/components/onboarding/ProfileForm';
 import Dashboard from '@/components/dashboard/Dashboard';
@@ -27,7 +29,39 @@ const Index = () => {
   const hasCompletedTour = useAppStore(s => s.hasCompletedTour);
   const isAuthenticated = useAppStore(s => s.isAuthenticated);
   const profile = useAppStore(s => s.profile);
+  const setProfile = useAppStore(s => s.setProfile);
+  const setOnboardingComplete = useAppStore(s => s.setOnboardingComplete);
   const [currentView, setCurrentView] = useState<PageId>('dashboard');
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // When authenticated but no local profile, check Supabase for existing profile
+  useEffect(() => {
+    if (!isAuthenticated || profile) return;
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      setIsLoadingProfile(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        const result = await checkUserProfile(user.id);
+
+        if (!cancelled && result.destination === 'dashboard' && result.profile) {
+          setProfile(result.profile);
+          setOnboardingComplete(true);
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        if (!cancelled) setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, profile, setProfile, setOnboardingComplete]);
 
   if (!hasCompletedTour) {
     return <OnboardingWelcome onNext={() => useAppStore.getState().setHasCompletedTour(true)} />;
@@ -35,6 +69,18 @@ const Index = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Show loading while checking Supabase for existing profile
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground text-sm font-medium">Chargement du profil...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {

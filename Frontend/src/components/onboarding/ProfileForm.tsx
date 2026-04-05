@@ -11,6 +11,9 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { calculateBMI } from '@/lib/glucose';
 import { UserProfile, useAppStore } from '@/store/useAppStore';
 import SokkarLogo from '@/components/SokkarLogo';
+import { supabase } from '@/lib/supabase';
+import { storeProfileToDb } from '@/lib/profileSync';
+import { toast } from 'sonner';
 
 const formVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0 }),
@@ -44,10 +47,35 @@ const ProfileForm = ({ onComplete }: { onComplete: () => void }) => {
   const goNext = () => { setDirection(1); setPage(p => Math.min(p + 1, 3)); };
   const goPrev = () => { setDirection(-1); setPage(p => Math.max(p - 1, 1)); };
 
-  const handleSubmit = () => {
-    setProfile(form as UserProfile);
-    setOnboardingComplete(true);
-    onComplete();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSaving(true);
+    try {
+      // Save to local store
+      setProfile(form as UserProfile);
+      setOnboardingComplete(true);
+
+      // Save to Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const dbData = storeProfileToDb(form, user.id);
+        const { error } = await supabase
+          .from('profiles')
+          .upsert(dbData);
+
+        if (error) {
+          console.error('Failed to save profile to Supabase:', error);
+        }
+      }
+
+      onComplete();
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      toast.error(isRTL ? 'خطأ في حفظ الملف الشخصي' : 'Erreur lors de la sauvegarde du profil');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -285,8 +313,12 @@ const ProfileForm = ({ onComplete }: { onComplete: () => void }) => {
               {t.profileForm.next} <NextIcon size={18} className={isRTL ? "mr-2" : "ml-2"} />
             </Button>
           ) : (
-            <Button size="lg" onClick={handleSubmit} className="flex-[2] rounded-2xl h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-              <Check size={18} className={isRTL ? "ml-2" : "mr-2"} /> {t.profileForm.finish}
+            <Button size="lg" onClick={handleSubmit} disabled={isSaving} className="flex-[2] rounded-2xl h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              {isSaving ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground" />
+              ) : (
+                <><Check size={18} className={isRTL ? "ml-2" : "mr-2"} /> {t.profileForm.finish}</>
+              )}
             </Button>
           )}
         </div>
