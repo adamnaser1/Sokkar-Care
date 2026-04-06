@@ -15,6 +15,8 @@ import ForgotPasswordPage from "@/components/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 import AuthCallback from "./pages/AuthCallback.tsx";
 
+import OnboardingWelcome from "./components/onboarding/OnboardingWelcome.tsx";
+
 const queryClient = new QueryClient();
 
 /**
@@ -48,28 +50,42 @@ function AuthListener() {
   return null;
 }
 
-const App = () => (
-  <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthListener />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
-);
+const App = () => {
+  const hasCompletedTour = useAppStore(s => s.hasCompletedTour);
+  const setHasCompletedTour = useAppStore(s => s.setHasCompletedTour);
+
+  // GLOBAL GUARD: Always show slides if tour not completed, regardless of route
+  if (!hasCompletedTour) {
+    return (
+      <ThemeProvider>
+        <OnboardingWelcome onNext={() => setHasCompletedTour(true)} />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthListener />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
+};
 
 export default App;

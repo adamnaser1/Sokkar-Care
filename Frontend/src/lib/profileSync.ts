@@ -94,12 +94,12 @@ export async function checkUserProfile(userId: string): Promise<{
       return { destination: 'onboarding', profile: null };
     }
 
-    if (dbProfile.onboarding_completed && dbProfile.first_name) {
-      // Profile complete → load and go to dashboard
+    if (dbProfile.onboarding_completed) {
+      // Profile marked complete → load it (even if some fields are null)
       return { destination: 'dashboard', profile: dbProfileToStore(dbProfile) };
     }
 
-    // Profile exists but incomplete → onboarding
+    // Profile exists but onboarding not completed
     return { destination: 'onboarding', profile: null };
   } catch (err) {
     console.error('Failed to check user profile:', err);

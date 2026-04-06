@@ -187,6 +187,7 @@ const SettingsPage = ({ onBack, onNavigate }: Props) => {
                         </div>
                       )}
 
+                      {section.id === 'notifications' && (
                         <div className={`p-4 rounded-2xl bg-muted/40 flex flex-col gap-6 ${isRTL ? 'text-right' : 'text-left'}`}>
                           <Button 
                             variant="outline" 
@@ -282,6 +283,7 @@ const SettingsPage = ({ onBack, onNavigate }: Props) => {
                             </div>
                           </div>
                         </div>
+                      )}
 
                       {section.id === 'appearance_units' && (
                         <div className={`p-4 rounded-2xl bg-muted/40 flex flex-col gap-5 ${isRTL ? 'text-right' : 'text-left'}`}>

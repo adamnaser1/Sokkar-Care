@@ -4,7 +4,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { checkUserProfile } from '@/lib/profileSync';
-import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
 import ProfileForm from '@/components/onboarding/ProfileForm';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ChartsPage from '@/components/charts/ChartsPage';
@@ -30,9 +29,11 @@ const Index = () => {
   const isAuthenticated = useAppStore(s => s.isAuthenticated);
   const profile = useAppStore(s => s.profile);
   const setProfile = useAppStore(s => s.setProfile);
+  const setIsAuthenticated = useAppStore(s => s.setIsAuthenticated);
   const setOnboardingComplete = useAppStore(s => s.setOnboardingComplete);
   const [currentView, setCurrentView] = useState<PageId>('dashboard');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  // Start as "loading" if authenticated but no local profile — prevents ProfileForm flash
+  const [isLoadingProfile, setIsLoadingProfile] = useState(() => isAuthenticated && !profile);
 
   // When authenticated but no local profile, check Supabase for existing profile
   useEffect(() => {
@@ -43,8 +44,17 @@ const Index = () => {
     const loadProfile = async () => {
       setIsLoadingProfile(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          // If we thought we were authenticated but Supabase says otherwise,
+          // clear local state and redirect to login
+          setIsAuthenticated(false);
+          setIsLoadingProfile(false);
+          return;
+        }
+
+        if (cancelled) return;
 
         const result = await checkUserProfile(user.id);
 
@@ -62,10 +72,6 @@ const Index = () => {
     loadProfile();
     return () => { cancelled = true; };
   }, [isAuthenticated, profile, setProfile, setOnboardingComplete]);
-
-  if (!hasCompletedTour) {
-    return <OnboardingWelcome onNext={() => useAppStore.getState().setHasCompletedTour(true)} />;
-  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

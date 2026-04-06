@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAppStore } from '@/store/useAppStore';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const LoginPage = () => {
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
   const navigate = useNavigate();
   const setIsAuthenticated = useAppStore(s => s.setIsAuthenticated);
+  const isAuthenticated = useAppStore(s => s.isAuthenticated);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +30,12 @@ const LoginPage = () => {
       window.history.replaceState({}, document.title, '/login');
     }
   }, [isRTL]);
+
+  // Redirect already-authenticated users to dashboard (after all hooks)
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
