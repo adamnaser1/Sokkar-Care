@@ -101,8 +101,7 @@ export async function checkUserProfile(userId: string): Promise<{
 
     // Profile exists but onboarding not completed
     return { destination: 'onboarding', profile: null };
-  } catch (err) {
-    console.error('Failed to check user profile:', err);
+  } catch (_err) {
     return { destination: 'onboarding', profile: null };
   }
 }

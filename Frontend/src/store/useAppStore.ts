@@ -345,8 +345,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           })));
         }
       }
-    } catch (err) {
-      console.error('Supabase sync failed:', err);
+    } catch (_err) {
+      // Supabase sync failed silently in background
     }
   },
 
@@ -405,8 +405,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       set({ ...newState, isDataFetched: true });
       persist(get());
-    } catch (err) {
-      console.error('Failed to load from Supabase:', err);
+    } catch (_err) {
       // Ensure we don't block the UI forever even on error
       set({ isDataFetched: true });
     }
@@ -435,8 +434,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
       window.location.href = '/login?loggedOut=true';
-    } catch (err) {
-      console.error('Logout failed:', err);
+    } catch (_err) {
+      // Logout failed
     }
   },
   resetData: () => {

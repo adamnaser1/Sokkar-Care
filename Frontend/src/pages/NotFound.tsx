@@ -10,7 +10,7 @@ const NotFound = () => {
   const isRTL = language === 'ar';
 
   useEffect(() => {
-    console.error("404 Error:", location.pathname);
+    // 404 tracking logic could be added here
   }, [location.pathname]);
 
   return (

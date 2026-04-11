@@ -3,7 +3,6 @@ import { Navigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { checkUserProfile } from '@/lib/profileSync';
 import ProfileForm from '@/components/onboarding/ProfileForm';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ChartsPage from '@/components/charts/ChartsPage';
@@ -57,8 +56,8 @@ const Index = () => {
             setIsAuthenticated(false);
           }
         }
-      } catch (err) {
-        console.error('Failed to initialize app data:', err);
+      } catch (_err) {
+        // Initialization error handled silently
       }
     };
 

@@ -65,13 +65,12 @@ const ProfileForm = ({ onComplete }: { onComplete: () => void }) => {
           .upsert(dbData);
 
         if (error) {
-          console.error('Failed to save profile to Supabase:', error);
+          // Silent error handling for background save
         }
       }
 
       onComplete();
-    } catch (err) {
-      console.error('Error saving profile:', err);
+    } catch (_err) {
       toast.error(isRTL ? 'خطأ في حفظ الملف الشخصي' : 'Erreur lors de la sauvegarde du profil');
     } finally {
       setIsSaving(false);
