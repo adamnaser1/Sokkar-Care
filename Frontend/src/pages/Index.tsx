@@ -30,55 +30,48 @@ const Index = () => {
   const profile = useAppStore(s => s.profile);
   const setProfile = useAppStore(s => s.setProfile);
   const setIsAuthenticated = useAppStore(s => s.setIsAuthenticated);
-  const setOnboardingComplete = useAppStore(s => s.setOnboardingComplete);
+  const onboardingComplete = useAppStore(s => s.onboardingComplete);
+  const isDataFetched = useAppStore(s => s.isDataFetched);
   const [currentView, setCurrentView] = useState<PageId>('dashboard');
-  // Start as "loading" if authenticated but no local profile — prevents ProfileForm flash
-  const [isLoadingProfile, setIsLoadingProfile] = useState(() => isAuthenticated && !profile);
+  
+  // Derived loading state
+  const isLoading = isAuthenticated && !isDataFetched;
 
-  // When authenticated but no local profile, check Supabase for existing profile
+  // When authenticated but data not yet fetched, fetch EVERYTHING from Supabase
   useEffect(() => {
-    if (!isAuthenticated || profile) return;
+    if (!isAuthenticated || isDataFetched) return;
 
     let cancelled = false;
 
-    const loadProfile = async () => {
-      setIsLoadingProfile(true);
+    const initAppData = async () => {
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        await useAppStore.getState().loadFromSupabase();
         
-        if (userError || !user) {
-          // If we thought we were authenticated but Supabase says otherwise,
-          // clear local state and redirect to login
-          setIsAuthenticated(false);
-          setIsLoadingProfile(false);
-          return;
-        }
-
-        if (cancelled) return;
-
-        const result = await checkUserProfile(user.id);
-
-        if (!cancelled && result.destination === 'dashboard' && result.profile) {
-          setProfile(result.profile);
-          setOnboardingComplete(true);
+        // After loading, if profile is still null, it means session 
+        // might be invalid or something went wrong
+        const updatedState = useAppStore.getState();
+        if (!cancelled && !updatedState.profile && updatedState.isAuthenticated) {
+          // Double check if we really should be authenticated
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user && !cancelled) {
+            setIsAuthenticated(false);
+          }
         }
       } catch (err) {
-        console.error('Failed to load profile:', err);
-      } finally {
-        if (!cancelled) setIsLoadingProfile(false);
+        console.error('Failed to initialize app data:', err);
       }
     };
 
-    loadProfile();
+    initAppData();
     return () => { cancelled = true; };
-  }, [isAuthenticated, profile, setProfile, setOnboardingComplete]);
+  }, [isAuthenticated, isDataFetched, setIsAuthenticated]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   // Show loading while checking Supabase for existing profile
-  if (isLoadingProfile) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -89,7 +82,8 @@ const Index = () => {
     );
   }
 
-  if (!profile) {
+  // Ensure onboarding is complete before showing dashboard
+  if (!onboardingComplete || !profile) {
     return <ProfileForm onComplete={() => useAppStore.getState().setOnboardingComplete(true)} />;
   }
 

@@ -121,6 +121,7 @@ interface AppState {
   language: 'fr' | 'ar';
   notifications: NotificationSettings;
   recipeCategoryFilter: string | null;
+  isDataFetched: boolean;
 
   setHasCompletedTour: (v: boolean) => void;
   setOnboardingComplete: (v: boolean) => void;
@@ -138,9 +139,11 @@ interface AppState {
   setNotifications: (n: Partial<NotificationSettings>) => void;
   setRecipeCategoryFilter: (filter: string | null) => void;
   setIsAuthenticated: (v: boolean) => void;
-  syncToSupabase: () => Promise<void>;
+  syncToSupabase: (type?: 'profile' | 'measurements' | 'stats' | 'medications' | 'hba1c' | 'calculator') => Promise<void>;
+  loadFromSupabase: () => Promise<void>;
   logout: () => Promise<void>;
   resetData: () => void;
+  setIsDataFetched: (v: boolean) => void;
 }
 
 const defaultNotifications: NotificationSettings = {
@@ -180,6 +183,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   language: saved.language || 'fr',
   notifications: saved.notifications || defaultNotifications,
   recipeCategoryFilter: null,
+  isDataFetched: false,
 
   setHasCompletedTour: (v) => {
     set({ hasCompletedTour: v });
@@ -189,53 +193,70 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ onboardingComplete: v });
     persist(get());
   },
-  setProfile: (p) => {
+  setProfile: async (p) => {
     set({ profile: p });
     persist(get());
+    await get().syncToSupabase('profile');
   },
-  updateProfile: (updates) => {
+  updateProfile: async (updates) => {
     const current = get().profile;
     if (current) {
       set({ profile: { ...current, ...updates } });
       persist(get());
+      await get().syncToSupabase('profile');
     }
   },
-  addMeasurement: (m) => {
+  addMeasurement: async (m) => {
     const measurements = [m, ...get().measurements];
     const points = get().points + 50;
     set({ measurements, points });
     persist(get());
+    await get().syncToSupabase('measurements');
+    await get().syncToSupabase('stats');
   },
-  updateMeasurement: (id, updates) => {
+  updateMeasurement: async (id, updates) => {
     const measurements = get().measurements.map(m => m.id === id ? { ...m, ...updates } : m);
     set({ measurements });
     persist(get());
+    await get().syncToSupabase('measurements');
   },
-  deleteMeasurement: (id) => {
+  deleteMeasurement: async (id) => {
     const measurements = get().measurements.filter(m => m.id !== id);
     set({ measurements });
     persist(get());
+    await get().syncToSupabase('measurements');
   },
-  addCalculatorEntry: (e) => {
+  addCalculatorEntry: async (e) => {
     const calculatorHistory = [e, ...get().calculatorHistory].slice(0, 20);
     set({ calculatorHistory });
     persist(get());
+    await get().syncToSupabase('calculator');
   },
-  incrementTipsRead: () => {
+  incrementTipsRead: async () => {
     const tipsRead = get().tipsRead + 1;
     const points = get().points + 10;
     set({ tipsRead, points });
     persist(get());
+    await get().syncToSupabase('stats');
   },
-  incrementFoodsViewed: () => {
+  incrementFoodsViewed: async () => {
     const foodsViewed = get().foodsViewed + 1;
     const points = get().points + 5;
     set({ foodsViewed, points });
     persist(get());
+    await get().syncToSupabase('stats');
   },
   setGlucoseUnit: (u) => { set({ glucoseUnit: u }); persist(get()); },
   setWeightUnit: (u) => { set({ weightUnit: u }); persist(get()); },
-  setLanguage: (l) => { set({ language: l }); persist(get()); },
+  setLanguage: async (l) => { 
+    set({ language: l }); 
+    const profile = get().profile;
+    if (profile) {
+      set({ profile: { ...profile, language: l } });
+      await get().syncToSupabase('profile');
+    }
+    persist(get()); 
+  },
   setIsAuthenticated: (v) => { set({ isAuthenticated: v }); persist(get()); },
   setNotifications: (n) => {
     set({ notifications: { ...get().notifications, ...n } });
@@ -243,30 +264,151 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setRecipeCategoryFilter: (f) => set({ recipeCategoryFilter: f }),
 
-  syncToSupabase: async () => {
-    const { measurements, isAuthenticated } = get();
-    if (!isAuthenticated || !measurements.length) return;
+  syncToSupabase: async (type) => {
+    const { isAuthenticated, profile, measurements, points, streak, tipsRead, foodsViewed, calculatorHistory } = get();
+    if (!isAuthenticated) return;
 
     try {
-      const userRes = await supabase.auth.getUser();
-      const userId = userRes.data.user?.id;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const { error } = await supabase
-        .from('measurements')
-        .upsert(measurements.map(m => ({
+      const userId = user.id;
+
+      // Profile sync
+      if (!type || type === 'profile') {
+        if (profile) {
+          const { storeProfileToDb } = await import('@/lib/profileSync');
+          await supabase.from('profiles').upsert(storeProfileToDb(profile, userId));
+        }
+      }
+
+      // Stats sync
+      if (!type || type === 'stats') {
+        await supabase.from('user_stats').upsert({
+          user_id: userId,
+          points,
+          streak,
+          tips_read: tipsRead,
+          foods_viewed: foodsViewed,
+          last_activity: new Date().toISOString()
+        });
+      }
+
+      // Measurements sync
+      if (!type || type === 'measurements') {
+        if (measurements.length > 0) {
+          await supabase.from('measurements').upsert(measurements.map(m => ({
+            id: m.id,
+            user_id: userId,
+            glucose_value: m.value, // corrected
+            context: m.context,
+            notes: m.notes,
+            measured_at: m.measuredAt
+          })));
+        }
+      }
+
+      // Medications sync
+      if ((!type || type === 'medications') && profile?.medications) {
+        await supabase.from('medications').upsert(profile.medications.map(m => ({
           id: m.id,
-          value: m.value,
-          unit: m.unit,
-          context: m.context,
-          notes: m.notes,
-          measured_at: m.measuredAt,
-          user_id: userId
+          user_id: userId,
+          name: m.name,
+          type: m.type,
+          usual_dose: m.dosage, // corrected
+          timing: m.frequency ? m.frequency.split(',').map(s => s.trim()) : [] // map to text array
         })));
-      
-      if (error) throw error;
-      console.log('Successfully synced to Supabase');
+      }
+
+      // HbA1c History sync
+      if ((!type || type === 'hba1c') && profile?.hba1cHistory) {
+        await supabase.from('hba1c_records').upsert(profile.hba1cHistory.map(h => ({
+          id: h.id,
+          user_id: userId,
+          recorded_date: h.date, // corrected
+          value: h.value,
+          comment: h.comment
+        })));
+      }
+
+      // Calculator sync
+      if (!type || type === 'calculator') {
+        if (calculatorHistory.length > 0) {
+          await supabase.from('calculator_history').upsert(calculatorHistory.map(e => ({
+            id: e.id,
+            user_id: userId,
+            measured: e.measured,
+            target: e.target,
+            sensitivity: e.sensitivity,
+            result: e.result,
+            calculated_at: e.calculatedAt
+          })));
+        }
+      }
     } catch (err) {
-      console.error('Sync failed:', err);
+      console.error('Supabase sync failed:', err);
+    }
+  },
+
+  loadFromSupabase: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const userId = user.id;
+      const { dbProfileToStore, dbMeasurementToStore, dbCalculatorToStore, dbMedicationToStore, dbHba1cToStore } = await import('@/lib/profileSync');
+
+      // Fetch profile and stats first (core data)
+      const [profileRes, statsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+        supabase.from('user_stats').select('*').eq('user_id', userId).maybeSingle()
+      ]);
+
+      const newState: Partial<AppState> = { isAuthenticated: true };
+
+      if (profileRes.data) {
+        newState.profile = dbProfileToStore(profileRes.data);
+        newState.onboardingComplete = profileRes.data.onboarding_completed;
+        newState.language = profileRes.data.language || 'fr';
+      }
+
+      if (statsRes.data) {
+        newState.points = statsRes.data.points || 0;
+        newState.streak = statsRes.data.streak || 0;
+        newState.tipsRead = statsRes.data.tips_read || 0;
+        newState.foodsViewed = statsRes.data.foods_viewed || 0;
+      }
+
+      // Fetch other data collections
+      const [measurementsRes, medsRes, hba1cRes, calcRes] = await Promise.all([
+        supabase.from('measurements').select('*').eq('user_id', userId).order('measured_at', { ascending: false }),
+        supabase.from('medications').select('*').eq('user_id', userId),
+        supabase.from('hba1c_records').select('*').eq('user_id', userId).order('recorded_date', { ascending: false }),
+        supabase.from('calculator_history').select('*').eq('user_id', userId).limit(20).order('calculated_at', { ascending: false })
+      ]);
+
+      if (measurementsRes.data) {
+        newState.measurements = measurementsRes.data.map(dbMeasurementToStore);
+      }
+
+      if (medsRes.data && newState.profile) {
+        newState.profile.medications = medsRes.data.map(dbMedicationToStore);
+      }
+
+      if (hba1cRes.data && newState.profile) {
+        newState.profile.hba1cHistory = hba1cRes.data.map(dbHba1cToStore);
+      }
+
+      if (calcRes.data) {
+        newState.calculatorHistory = calcRes.data.map(dbCalculatorToStore);
+      }
+
+      set({ ...newState, isDataFetched: true });
+      persist(get());
+    } catch (err) {
+      console.error('Failed to load from Supabase:', err);
+      // Ensure we don't block the UI forever even on error
+      set({ isDataFetched: true });
     }
   },
   logout: async () => {
@@ -298,9 +440,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   resetData: () => {
-    set({ measurements: [], calculatorHistory: [], points: 0, streak: 0, tipsRead: 0, foodsViewed: 0 });
+    set({ measurements: [], calculatorHistory: [], points: 0, streak: 0, tipsRead: 0, foodsViewed: 0, isDataFetched: false });
     persist(get());
   },
+  setIsDataFetched: (v) => set({ isDataFetched: v }),
 }));
 
 function persist(state: AppState) {

@@ -106,3 +106,57 @@ export async function checkUserProfile(userId: string): Promise<{
     return { destination: 'onboarding', profile: null };
   }
 }
+
+/**
+ * Maps DB measurements to Store measurements
+ */
+export function dbMeasurementToStore(db: any): any {
+  return {
+    id: db.id,
+    value: db.glucose_value, // corrected from value
+    unit: 'mg/dL', // unit is not in DB, assuming mg/dL
+    context: db.context,
+    notes: db.notes || '',
+    measuredAt: db.measured_at,
+    medicationDoses: [] // dose_logs is a separate table, for now empty or load from there
+  };
+}
+
+/**
+ * Maps DB calculator history to Store entries
+ */
+export function dbCalculatorToStore(db: any): any {
+  return {
+    id: db.id,
+    measured: db.measured,
+    target: db.target,
+    sensitivity: db.sensitivity,
+    result: db.result,
+    calculatedAt: db.calculated_at
+  };
+}
+
+/**
+ * Maps DB medications to Store medications
+ */
+export function dbMedicationToStore(db: any): any {
+  return {
+    id: db.id,
+    name: db.name,
+    type: db.type,
+    dosage: db.usual_dose, // corrected from dosage
+    frequency: db.timing ? db.timing.join(', ') : '' // mapped from timing ARRAY
+  };
+}
+
+/**
+ * Maps DB hba1c history to Store records
+ */
+export function dbHba1cToStore(db: any): any {
+  return {
+    id: db.id,
+    date: db.recorded_date, // corrected from date
+    value: db.value,
+    comment: db.comment || ''
+  };
+}
