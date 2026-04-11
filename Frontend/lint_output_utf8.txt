@@ -1,0 +1,81 @@
+﻿
+> vite_react_shadcn_ts@0.0.0 lint
+> eslint .
+
+
+D:\Projects\Sokkar-Care\Frontend\src\components\auth\ForgotPasswordPage.tsx
+  38:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\auth\LoginPage.tsx
+  61:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  95:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\auth\RegisterPage.tsx
+  76:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  96:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\auth\ResetPasswordPage.tsx
+  72:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\charts\ChartsPage.tsx
+  153:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\dashboard\Dashboard.tsx
+  329:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\dashboard\MeasurementDialog.tsx
+  62:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\onboarding\ProfileForm.tsx
+  44:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\settings\SettingsPage.tsx
+  316:103  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\tips\TipsPage.tsx
+  161:38   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  183:104  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\badge.tsx
+  29:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\button.tsx
+  47:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\command.tsx
+  24:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\form.tsx
+  129:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\navigation-menu.tsx
+  111:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\sidebar.tsx
+  636:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\sonner.tsx
+  27:19  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\textarea.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+D:\Projects\Sokkar-Care\Frontend\src\components\ui\toggle.tsx
+  37:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Projects\Sokkar-Care\Frontend\src\lib\profileSync.ts
+    7:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  154:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  154:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Projects\Sokkar-Care\Frontend\tailwind.config.ts
+  98:13  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+Ô£û 32 problems (25 errors, 7 warnings)
+
