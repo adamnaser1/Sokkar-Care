@@ -31,8 +31,10 @@ function AuthListener() {
       (event, session) => {
         if (event === 'SIGNED_IN' && session) {
           setIsAuthenticated(true);
+          useAppStore.getState().setIsDataFetched(false);
         } else if (event === 'SIGNED_OUT') {
           setIsAuthenticated(false);
+          useAppStore.getState().setIsDataFetched(false);
         }
       }
     );
@@ -41,6 +43,7 @@ function AuthListener() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsAuthenticated(true);
+        useAppStore.getState().setIsDataFetched(false);
       }
     });
 
@@ -53,9 +56,11 @@ function AuthListener() {
 const App = () => {
   const hasCompletedTour = useAppStore(s => s.hasCompletedTour);
   const setHasCompletedTour = useAppStore(s => s.setHasCompletedTour);
+  const isAuthenticated = useAppStore(s => s.isAuthenticated);
 
   // GLOBAL GUARD: Always show slides if tour not completed, regardless of route
-  if (!hasCompletedTour) {
+  // BUT skip if user is already authenticated
+  if (!hasCompletedTour && !isAuthenticated) {
     return (
       <ThemeProvider>
         <OnboardingWelcome onNext={() => setHasCompletedTour(true)} />

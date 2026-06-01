@@ -370,6 +370,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         newState.profile = dbProfileToStore(profileRes.data);
         newState.onboardingComplete = profileRes.data.onboarding_completed;
         newState.language = profileRes.data.language || 'fr';
+        if (profileRes.data.onboarding_completed) {
+          newState.hasCompletedTour = true;
+        }
       }
 
       if (statsRes.data) {
@@ -418,6 +421,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         profile: null, 
         hasCompletedTour: false,
         onboardingComplete: false,
+        isDataFetched: false,
         measurements: [],
         calculatorHistory: [],
         points: 0,

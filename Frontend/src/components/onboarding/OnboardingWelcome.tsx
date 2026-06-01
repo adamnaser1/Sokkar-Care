@@ -197,9 +197,17 @@ const OnboardingWelcome = ({ onNext }: Props) => {
         </div>
         
         {step === 0 && (
-          <p className="text-xs text-muted-foreground max-w-xs text-center">
-            {t.onboarding.disclaimer}
-          </p>
+          <div className="flex flex-col items-center gap-2 mt-1">
+            <button
+              onClick={onNext}
+              className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+            >
+              {t.auth.hasAccount} <span className="underline">{t.auth.login}</span>
+            </button>
+            <p className="text-xs text-muted-foreground max-w-xs text-center mt-1">
+              {t.onboarding.disclaimer}
+            </p>
+          </div>
         )}
       </div>
     </div>
