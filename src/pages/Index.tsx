@@ -15,6 +15,8 @@ import BottomNav, { PageId } from '@/components/layout/BottomNav';
 
 type AppView = PageId | 'tips' | 'calculator' | 'settings';
 
+import SokkarLogo from '@/components/SokkarLogo';
+
 const pageVariants = {
   initial: { opacity: 0, y: 20, scale: 0.98 },
   animate: { opacity: 1, y: 0, scale: 1 },
@@ -23,16 +25,28 @@ const pageVariants = {
 
 const Index = () => {
   const onboardingComplete = useAppStore(s => s.onboardingComplete);
-  const [onboardingStep, setOnboardingStep] = useState<'welcome' | 'profile' | 'done'>(
-    onboardingComplete ? 'done' : 'welcome'
-  );
+  const session = useAppStore(s => s.session);
+  const isLoadingAuth = useAppStore(s => s.isLoadingAuth);
+  
+  const [showWelcome, setShowWelcome] = useState(!onboardingComplete);
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
 
-  if (onboardingStep === 'welcome') {
-    return <OnboardingWelcome onNext={() => setOnboardingStep('profile')} />;
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div animate={{ scale: [0.9, 1.1, 0.9], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+          <SokkarLogo size={80} />
+        </motion.div>
+      </div>
+    );
   }
-  if (onboardingStep === 'profile') {
-    return <ProfileForm onComplete={() => setOnboardingStep('done')} />;
+
+  if (!session && !onboardingComplete && showWelcome) {
+    return <OnboardingWelcome onNext={() => setShowWelcome(false)} />;
+  }
+
+  if (!onboardingComplete) {
+    return <ProfileForm onComplete={() => setShowWelcome(false)} />;
   }
 
   const navPage: PageId = (['dashboard', 'journal', 'charts', 'food', 'profile'] as PageId[]).includes(currentView as PageId)

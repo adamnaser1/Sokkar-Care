@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export interface UserProfile {
   firstName: string;
@@ -64,6 +66,7 @@ export const BADGES: Badge[] = [
 ];
 
 interface NotificationSettings {
+
   measureReminders: boolean;
   measureTimes: string[];
   injectionReminders: boolean;
@@ -75,6 +78,9 @@ interface NotificationSettings {
 }
 
 interface AppState {
+  session: Session | null;
+  user: User | null;
+  isLoadingAuth: boolean;
   onboardingComplete: boolean;
   profile: UserProfile | null;
   measurements: GlucoseMeasurement[];
@@ -86,6 +92,8 @@ interface AppState {
   glucoseUnit: 'mg/dL' | 'mmol/L';
   weightUnit: 'kg' | 'lb';
   notifications: NotificationSettings;
+  setSession: (session: Session | null) => void;
+  fetchProfile: (userId: string) => Promise<void>;
   setOnboardingComplete: (v: boolean) => void;
   setProfile: (p: UserProfile) => void;
   addMeasurement: (m: GlucoseMeasurement) => void;
@@ -121,6 +129,9 @@ const loadState = () => {
 const saved = loadState();
 
 export const useAppStore = create<AppState>((set, get) => ({
+  session: null,
+  user: null,
+  isLoadingAuth: true,
   onboardingComplete: saved.onboardingComplete || false,
   profile: saved.profile || null,
   measurements: saved.measurements || [],
@@ -132,6 +143,54 @@ export const useAppStore = create<AppState>((set, get) => ({
   glucoseUnit: saved.glucoseUnit || 'mg/dL',
   weightUnit: saved.weightUnit || 'kg',
   notifications: saved.notifications || defaultNotifications,
+  setSession: (session) => {
+    set({ session, user: session?.user || null, isLoadingAuth: false });
+  },
+  fetchProfile: async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+      
+      if (data) {
+        const mappedProfile: UserProfile = {
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+          dateOfBirth: data.date_of_birth || '',
+          weight: data.weight_kg || 0,
+          height: data.height_cm || 0,
+          sex: data.gender || '',
+          diabetesType: data.diabetes_type || '',
+          diagnosisDate: data.diagnosis_date || '',
+          usesRapidInsulin: data.uses_rapid_insulin || false,
+          rapidInsulinType: data.rapid_insulin_type || '',
+          rapidInsulinUnits: data.rapid_insulin_units || 0,
+          usesLongInsulin: data.uses_long_insulin || false,
+          longInsulinType: data.long_insulin_type || '',
+          longInsulinUnits: data.long_insulin_units || 0,
+          otherMedications: data.other_medications || '',
+          hba1c: data.hba1c || 0,
+          lastGlucose: data.last_glucose || 0,
+          targetGlucose: data.target_glucose || 120,
+          sensitivityFactor: data.sensitivity_factor || 50,
+          activityLevel: data.activity_level || 'moderate',
+          dietType: data.diet_type || ['standard'],
+          language: data.language || 'fr',
+        };
+        set({ profile: mappedProfile, onboardingComplete: data.onboarding_completed || false });
+        persist(get());
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    }
+  },
   setOnboardingComplete: (v) => {
     set({ onboardingComplete: v });
     persist(get());

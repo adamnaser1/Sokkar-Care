@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import SokkarLogo from '@/components/SokkarLogo';
 import { Activity, Apple, Bell, ArrowRight, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const benefits = [
   {
@@ -38,6 +39,15 @@ const OnboardingWelcome = ({ onNext }: Props) => {
 
   const goForward = () => { setDirection(1); setStep(1); };
   const goBack = () => { setDirection(-1); setStep(0); };
+
+  const handleGoogleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background overflow-hidden">
@@ -111,13 +121,18 @@ const OnboardingWelcome = ({ onNext }: Props) => {
                 </motion.div>
               ))}
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={goBack} className="flex-1">
-                <ArrowLeft size={16} className="mr-1" /> Retour
+            <div className="flex flex-col gap-3 mt-2">
+              <Button onClick={handleGoogleSignIn} className="w-full py-6 text-base shadow-md">
+                Continuer avec Google
               </Button>
-              <Button onClick={onNext} className="flex-1">
-                Continuer <ArrowRight size={16} className="ml-1" />
-              </Button>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={goBack} className="flex-1">
+                  <ArrowLeft size={16} className="mr-1" /> Retour
+                </Button>
+                <Button variant="secondary" onClick={onNext} className="flex-1">
+                  Hors ligne <ArrowRight size={16} className="ml-1" />
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}

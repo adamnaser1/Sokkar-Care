@@ -10,6 +10,7 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { calculateBMI } from '@/lib/glucose';
 import { UserProfile, useAppStore } from '@/store/useAppStore';
 import SokkarLogo from '@/components/SokkarLogo';
+import { supabase } from '@/lib/supabase';
 
 const formVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0 }),
@@ -22,6 +23,7 @@ const ProfileForm = ({ onComplete }: { onComplete: () => void }) => {
   const [direction, setDirection] = useState(1);
   const setProfile = useAppStore(s => s.setProfile);
   const setOnboardingComplete = useAppStore(s => s.setOnboardingComplete);
+  const user = useAppStore(s => s.user);
 
   const [form, setForm] = useState<Partial<UserProfile>>({
     firstName: '', lastName: '', dateOfBirth: '', weight: 0, height: 0, sex: '',
@@ -38,7 +40,41 @@ const ProfileForm = ({ onComplete }: { onComplete: () => void }) => {
   const goNext = () => { setDirection(1); setPage(p => Math.min(p + 1, 3)); };
   const goPrev = () => { setDirection(-1); setPage(p => Math.max(p - 1, 1)); };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (user) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          first_name: form.firstName,
+          last_name: form.lastName,
+          date_of_birth: form.dateOfBirth,
+          weight_kg: form.weight,
+          height_cm: form.height,
+          gender: form.sex,
+          diabetes_type: form.diabetesType,
+          diagnosis_date: form.diagnosisDate,
+          uses_rapid_insulin: form.usesRapidInsulin,
+          rapid_insulin_type: form.rapidInsulinType,
+          rapid_insulin_units: form.rapidInsulinUnits,
+          uses_long_insulin: form.usesLongInsulin,
+          long_insulin_type: form.longInsulinType,
+          long_insulin_units: form.longInsulinUnits,
+          other_medications: form.otherMedications,
+          hba1c: form.hba1c,
+          last_glucose: form.lastGlucose,
+          target_glucose: form.targetGlucose,
+          sensitivity_factor: form.sensitivityFactor,
+          activity_level: form.activityLevel,
+          diet_type: form.dietType,
+          language: form.language,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Failed to save profile to database', err);
+      }
+    }
+
     setProfile(form as UserProfile);
     setOnboardingComplete(true);
     onComplete();
