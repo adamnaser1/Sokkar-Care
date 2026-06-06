@@ -156,10 +156,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        return;
       }
       
-      if (data) {
+      const localState = get();
+
+      if (data && data.onboarding_completed) {
+        // Online profile exists and is complete -> load it to local state
         const mappedProfile: UserProfile = {
           firstName: data.first_name || '',
           lastName: data.last_name || '',
@@ -184,7 +186,46 @@ export const useAppStore = create<AppState>((set, get) => ({
           dietType: data.diet_type || ['standard'],
           language: data.language || 'fr',
         };
-        set({ profile: mappedProfile, onboardingComplete: data.onboarding_completed || false });
+        set({ profile: mappedProfile, onboardingComplete: true });
+        persist(get());
+      } else if (localState.onboardingComplete && localState.profile) {
+        // Online profile is incomplete/missing, BUT local profile is complete!
+        // Migrate local data to Supabase
+        try {
+          await supabase.from('profiles').upsert({
+            id: userId,
+            first_name: localState.profile.firstName,
+            last_name: localState.profile.lastName,
+            date_of_birth: localState.profile.dateOfBirth,
+            weight_kg: localState.profile.weight,
+            height_cm: localState.profile.height,
+            gender: localState.profile.sex,
+            diabetes_type: localState.profile.diabetesType,
+            diagnosis_date: localState.profile.diagnosisDate,
+            uses_rapid_insulin: localState.profile.usesRapidInsulin,
+            rapid_insulin_type: localState.profile.rapidInsulinType,
+            rapid_insulin_units: localState.profile.rapidInsulinUnits,
+            uses_long_insulin: localState.profile.usesLongInsulin,
+            long_insulin_type: localState.profile.longInsulinType,
+            long_insulin_units: localState.profile.longInsulinUnits,
+            other_medications: localState.profile.otherMedications,
+            hba1c: localState.profile.hba1c,
+            last_glucose: localState.profile.lastGlucose,
+            target_glucose: localState.profile.targetGlucose,
+            sensitivity_factor: localState.profile.sensitivityFactor,
+            activity_level: localState.profile.activityLevel,
+            diet_type: localState.profile.dietType,
+            language: localState.profile.language,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          });
+          console.log("Migrated local profile to Supabase!");
+        } catch (migErr) {
+          console.error("Migration failed:", migErr);
+        }
+      } else {
+        // Both are incomplete -> show onboarding form
+        set({ onboardingComplete: false });
         persist(get());
       }
     } catch (err) {
