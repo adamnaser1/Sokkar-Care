@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GlucoseMeasurement, UserProfile } from '@/store/useAppStore';
 import { getGlucoseStatus } from '@/lib/glucose';
-import { Calendar, Download, X, FileText, CheckCircle2, TrendingUp, BarChart3 } from 'lucide-react';
+import { Calendar, Download, X, FileText, CheckCircle2, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { generateMeasurementsPDF } from '@/lib/pdfExport';
 
 export interface HbA1cEntry {
   id?: string;
@@ -148,6 +149,7 @@ const ExportPDFModal = ({
   const [startDate, setStartDate] = useState(formatDateString(new Date(now.getTime() - 7 * 86400000)));
   const [endDate, setEndDate] = useState(formatDateString(now));
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Range options listing
   const rangeOptions = [
@@ -209,428 +211,52 @@ const ExportPDFModal = ({
   const percentInRange = totalMeas > 0 ? Math.round((inRangeCount / totalMeas) * 100) : 0;
 
   // Handle Export PDF function
-  const handleExport = () => {
+  const handleExport = async () => {
     if (totalMeas === 0 && totalHb === 0) {
       toast.error(t.errorEmpty);
       return;
     }
 
     setIsGenerating(true);
+    setIsSuccess(false);
 
-    // Create a hidden print iframe to achieve perfect CSS styling, modern grids, 
-    // vector output, and seamless Arabic RTL character rendering.
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    printFrame.style.zIndex = '-9999';
-    document.body.appendChild(printFrame);
+    try {
+      // Small delay to let the UI update with spinner
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-    const frameDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-    if (!frameDoc) {
-      toast.error("Échec du démarrage de l'impression.");
+      generateMeasurementsPDF({
+        measurements: filteredMeasurements.map(m => ({
+          date: m.measuredAt,
+          measured_at: m.measuredAt,
+          value: m.value,
+          glucose_value: m.value,
+          context: m.context,
+          notes: m.notes,
+        })),
+        hba1cHistory: filteredHbA1c.map(h => ({
+          value: h.value,
+          recorded_date: h.measuredAt || h.date || h.createdAt,
+          date: h.measuredAt || h.date || h.createdAt,
+        })),
+        profile,
+        dateFrom: filterStart,
+        dateTo: filterEnd,
+        language,
+      });
+
+      setIsSuccess(true);
+      toast.success(t.exportSuccess);
+
+      // Reset success state after 2 seconds
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 2000);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      toast.error("Impossible de générer le PDF.");
+    } finally {
       setIsGenerating(false);
-      return;
     }
-
-    // Sort chronologically ascending for standard clinical layout
-    const sortedMeasurements = [...filteredMeasurements].sort(
-      (a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime()
-    );
-
-    const formattedStart = filterStart.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
-    const formattedEnd = filterEnd.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
-    const generationDate = new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'fr-FR');
-
-    const patientAge = profile?.dateOfBirth ? calculateAge(profile.dateOfBirth) : null;
-
-    frameDoc.open();
-    frameDoc.write(`
-      <!DOCTYPE html>
-      <html dir="${isRtl ? 'rtl' : 'ltr'}" lang="${language}">
-      <head>
-        <title>${t.reportTitle} - ${profile?.firstName || ''} ${profile?.lastName || ''}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <style>
-          * {
-            box-sizing: border-box;
-          }
-          body {
-            font-family: ${isRtl ? "'Cairo'" : "'Outfit'"}, system-ui, -apple-system, sans-serif;
-            margin: 30px;
-            color: #2d3748;
-            background-color: #ffffff;
-            direction: ${isRtl ? 'rtl' : 'ltr'};
-            text-align: ${isRtl ? 'right' : 'left'};
-            line-height: 1.5;
-          }
-          .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid #1a365d;
-            padding-bottom: 16px;
-            margin-bottom: 24px;
-          }
-          .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-          }
-          .logo-heart {
-            width: 38px;
-            height: 38px;
-            background-color: #1a365d;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-          }
-          .brand-name {
-            font-size: 26px;
-            font-weight: 700;
-            color: #1a365d;
-          }
-          .brand-name span {
-            color: #3182ce;
-          }
-          .report-meta {
-            text-align: ${isRtl ? 'left' : 'right'};
-            font-size: 13px;
-            color: #718096;
-          }
-          .report-meta h1 {
-            margin: 0 0 6px 0;
-            font-size: 20px;
-            color: #1a365d;
-            font-weight: 700;
-          }
-          .patient-card {
-            background-color: #f7fafc;
-            border-radius: 16px;
-            padding: 18px 24px;
-            margin-bottom: 24px;
-            border: 1px solid #e2e8f0;
-          }
-          .patient-card h2 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #1a365d;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-            font-weight: 600;
-          }
-          .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            font-size: 14px;
-          }
-          .grid-item {
-            display: flex;
-            flex-direction: column;
-          }
-          .grid-label {
-            color: #718096;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-          }
-          .grid-value {
-            font-weight: 600;
-            color: #2d3748;
-          }
-          .section-title {
-            font-size: 17px;
-            color: #1a365d;
-            margin-top: 24px;
-            margin-bottom: 14px;
-            font-weight: 600;
-            border-bottom: 2px solid #edf2f7;
-            padding-bottom: 6px;
-          }
-          .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 24px;
-          }
-          .stat-box {
-            border: 1px solid #e2e8f0;
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 14px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-          }
-          .stat-box .label {
-            font-size: 12px;
-            color: #718096;
-          }
-          .stat-box .number {
-            font-size: 22px;
-            font-weight: 700;
-            color: #1a365d;
-            margin-top: 4px;
-          }
-          .stat-box.normal { border-${isRtl ? 'right' : 'left'}: 4px solid #48bb78; }
-          .stat-box.hypo { border-${isRtl ? 'right' : 'left'}: 4px solid #f56565; }
-          .stat-box.hyper { border-${isRtl ? 'right' : 'left'}: 4px solid #ed8936; }
-          .stat-box.in-target { border-${isRtl ? 'right' : 'left'}: 4px solid #3182ce; }
-          
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-          }
-          th, td {
-            padding: 10px 12px;
-            text-align: ${isRtl ? 'right' : 'left'};
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 13px;
-          }
-          th {
-            background-color: #f7fafc;
-            color: #4a5568;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-          }
-          tr:nth-child(even) {
-            background-color: #fafbfe;
-          }
-          .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 500;
-            text-align: center;
-          }
-          .badge.normal {
-            background-color: #c6f6d5;
-            color: #22543d;
-          }
-          .badge.hypo {
-            background-color: #fed7d7;
-            color: #742a2a;
-          }
-          .badge.hyper {
-            background-color: #feebc8;
-            color: #744210;
-          }
-          .footer {
-            text-align: center;
-            font-size: 11px;
-            color: #a0aec0;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 16px;
-            margin-top: 36px;
-            page-break-inside: avoid;
-          }
-          @media print {
-            body {
-              margin: 15px;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .header-container {
-              margin-bottom: 16px;
-            }
-            .patient-card {
-              margin-bottom: 16px;
-            }
-            tr {
-              page-break-inside: avoid;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header-container">
-          <div class="logo-area">
-            <div class="logo-heart">♥</div>
-            <div class="brand-name">Sokkar <span>Care</span></div>
-          </div>
-          <div class="report-meta">
-            <h1>${t.reportTitle}</h1>
-            <div>${formattedStart} ${isRtl ? 'إلى' : 'au'} ${formattedEnd}</div>
-            <div style="font-size: 11px; margin-top: 4px;">${t.generatedOn(generationDate)}</div>
-          </div>
-        </div>
-
-        <div class="patient-card">
-          <h2>${t.patientInfo}</h2>
-          <div class="grid-container">
-            <div class="grid-item">
-              <span class="grid-label">${t.name}</span>
-              <span class="grid-value">${profile?.firstName || ''} ${profile?.lastName || ''}</span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${t.diabetesType}</span>
-              <span class="grid-value">
-                ${profile?.diabetesType === 'type1' ? (isRtl ? 'النوع 1' : 'Type 1') : 
-                  profile?.diabetesType === 'type2' ? (isRtl ? 'النوع 2' : 'Type 2') : 
-                  profile?.diabetesType || '-'}
-              </span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${t.targetGlucose}</span>
-              <span class="grid-value">${profile?.targetGlucose || 120} mg/dL</span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${t.age}</span>
-              <span class="grid-value">${patientAge ? `${patientAge} ${isRtl ? 'عاماً' : 'ans'}` : '-'}</span>
-            </div>
-          </div>
-          <div class="grid-container" style="margin-top: 10px;">
-            <div class="grid-item">
-              <span class="grid-label">${t.weight}</span>
-              <span class="grid-value">${profile?.weight ? `${profile.weight} kg` : '-'}</span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${t.height}</span>
-              <span class="grid-value">${profile?.height ? `${profile.height} cm` : '-'}</span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${isRtl ? 'مستويات مخزون السكر' : 'HbA1c Courante'}</span>
-              <span class="grid-value">${profile?.hba1c ? `${profile.hba1c} %` : '-'}</span>
-            </div>
-            <div class="grid-item">
-              <span class="grid-label">${isRtl ? 'وحدة القياس' : 'Unité'}</span>
-              <span class="grid-value">mg/dL</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="section-title">${t.statistics}</div>
-        <div class="stats-grid">
-          <div class="stat-box in-target">
-            <div class="label">${t.avgGlucose}</div>
-            <div class="number">${avgGlucose} <span style="font-size: 11px; font-weight: normal;">mg/dL</span></div>
-          </div>
-          <div class="stat-box normal">
-            <div class="label">${t.inRange} (%)</div>
-            <div class="number">${percentInRange}%</div>
-          </div>
-          <div class="stat-box hypo">
-            <div class="label">${t.hypoCount}</div>
-            <div class="number">${hypoCount}</div>
-          </div>
-          <div class="stat-box hyper">
-            <div class="label">${t.hyperCount}</div>
-            <div class="number">${hyperCount}</div>
-          </div>
-        </div>
-
-        ${sortedMeasurements.length > 0 ? `
-          <div class="section-title">${t.measurementsJournal} (${totalMeas})</div>
-          <table>
-            <thead>
-              <tr>
-                <th>${t.date}</th>
-                <th>${t.time}</th>
-                <th>${t.value} (mg/dL)</th>
-                <th>${t.context}</th>
-                <th>${t.notes}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${sortedMeasurements.map(m => {
-                const status = getGlucoseStatus(m.value);
-                const d = new Date(m.measuredAt);
-                const dateStr = d.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { weekday: 'short', month: 'numeric', day: 'numeric' });
-                const timeStr = d.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'fr-FR', { hour: '2-digit', minute: '2-digit' });
-                
-                let badgeClass = 'normal';
-                let statusLabel = isRtl ? 'طبيعي' : 'Normal';
-                if (status.color === 'hypo') {
-                  badgeClass = 'hypo';
-                  statusLabel = isRtl ? 'منخفض' : 'Hypo';
-                } else if (status.color === 'hyper') {
-                  badgeClass = 'hyper';
-                  statusLabel = isRtl ? 'مرتفع' : 'Hyper';
-                }
-
-                return `
-                  <tr>
-                    <td><strong>${dateStr}</strong></td>
-                    <td>${timeStr}</td>
-                    <td>
-                      <span class="badge ${badgeClass}" style="font-size: 13px; font-weight: bold; padding: 4px 10px;">
-                        ${m.value}
-                      </span>
-                    </td>
-                    <td><span style="color: #4a5568;">${m.context || '-'}</span></td>
-                    <td style="color: #718096; font-style: italic; max-width: 250px; word-wrap: break-word;">${m.notes || '-'}</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        ` : ''}
-
-        ${filteredHbA1c.length > 0 ? `
-          <div class="section-title">${t.hba1cHistoryTitle} (${totalHb})</div>
-          <table>
-            <thead>
-              <tr>
-                <th>${t.date}</th>
-                <th>${t.hba1cValue}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredHbA1c.map(h => {
-                const d = new Date(h.measuredAt || h.date || h.createdAt || new Date());
-                const dateStr = d.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
-                return `
-                  <tr>
-                    <td><strong>${dateStr}</strong></td>
-                    <td style="font-size: 14px; font-weight: bold; color: #1a365d;">${h.value} %</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        ` : ''}
-
-        <div class="footer">
-          <p>${t.clinicalDisclaimer}</p>
-          <p style="margin-top: 8px; color: #cbd5e0; font-size: 10px;">Sokkar Care v1.0 - ${isRtl ? 'تطبيق إدارة السكري المتكامل' : 'Application de suivi du diabète'}</p>
-        </div>
-      </body>
-      </html>
-    `);
-    frameDoc.close();
-
-    // Set timeout to ensure CSS/Fonts render cleanly in the iframe before printing
-    setTimeout(() => {
-      try {
-        printFrame.contentWindow?.focus();
-        printFrame.contentWindow?.print();
-        toast.success(t.exportSuccess);
-      } catch (err) {
-        // Fallback or debug keep
-        // console.error("Export failure", err); // keep in production
-        toast.error("Impossible de lancer l'export.");
-      } finally {
-        setIsGenerating(false);
-        // Safely remove frame after system print dialogue is dismissed
-        setTimeout(() => {
-          if (document.body.contains(printFrame)) {
-            document.body.removeChild(printFrame);
-          }
-        }, 1500);
-      }
-    }, 1000);
   };
 
   // Helper age calculator from dob string
@@ -823,8 +449,13 @@ const ExportPDFModal = ({
             className="flex-1 rounded-2xl h-12 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 transition-all shadow-md gap-2"
             disabled={isGenerating || (totalMeas === 0 && totalHb === 0)}
           >
-            <Download size={14} />
-            {isGenerating ? t.generating : t.downloadPDF}
+            {isGenerating ? (
+              <><Loader2 size={14} className="animate-spin" /> {t.generating}</>
+            ) : isSuccess ? (
+              <><CheckCircle2 size={14} /> {isRtl ? '✓ تم التحميل!' : '✓ Téléchargé !'}</>
+            ) : (
+              <><Download size={14} /> {t.downloadPDF}</>
+            )}
           </Button>
         </div>
       </DialogContent>
