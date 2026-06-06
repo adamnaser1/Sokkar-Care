@@ -41,7 +41,7 @@ const Index = () => {
     );
   }
 
-  if (!session && !onboardingComplete && showWelcome) {
+  if (!onboardingComplete && showWelcome) {
     return <OnboardingWelcome onNext={() => setShowWelcome(false)} />;
   }
 

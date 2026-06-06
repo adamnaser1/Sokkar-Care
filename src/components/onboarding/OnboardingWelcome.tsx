@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import SokkarLogo from '@/components/SokkarLogo';
 import { Activity, Apple, Bell, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/store/useAppStore';
 
 const benefits = [
   {
@@ -36,6 +37,7 @@ const slideVariants = {
 const OnboardingWelcome = ({ onNext }: Props) => {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
+  const session = useAppStore(s => s.session);
 
   const goForward = () => { setDirection(1); setStep(1); };
   const goBack = () => { setDirection(-1); setStep(0); };
@@ -122,17 +124,25 @@ const OnboardingWelcome = ({ onNext }: Props) => {
               ))}
             </div>
             <div className="flex flex-col gap-3 mt-2">
-              <Button onClick={handleGoogleSignIn} className="w-full py-6 text-base shadow-md">
-                Continuer avec Google
-              </Button>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={goBack} className="flex-1">
-                  <ArrowLeft size={16} className="mr-1" /> Retour
+              {session ? (
+                <Button onClick={onNext} className="w-full py-6 text-base shadow-md">
+                  Continuer <ArrowRight className="ml-2" size={20} />
                 </Button>
-                <Button variant="secondary" onClick={onNext} className="flex-1">
-                  Hors ligne <ArrowRight size={16} className="ml-1" />
-                </Button>
-              </div>
+              ) : (
+                <>
+                  <Button onClick={handleGoogleSignIn} className="w-full py-6 text-base shadow-md">
+                    Continuer avec Google
+                  </Button>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={goBack} className="flex-1">
+                      <ArrowLeft size={16} className="mr-1" /> Retour
+                    </Button>
+                    <Button variant="secondary" onClick={onNext} className="flex-1">
+                      Hors ligne <ArrowRight size={16} className="ml-1" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}
